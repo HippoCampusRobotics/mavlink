@@ -5442,7 +5442,7 @@
       <field type="uint8_t" name="breach_mitigation" enum="FENCE_MITIGATE">Active action to prevent fence breach</field>
     </message>
     <!-- MESSAGE IDs 180 - 229: Space for custom messages in individual projectname_messages.xml files -->
-    <message id="229" name="HIPPOCAMPUS_ATTITUDE_TARGET_EXTERNAL">
+    <message id="229" name="ATTITUDE_CONTROL_EXT">
       <description>Can be used to send feedthrough commands from an external attitude controller.</description>
       <field type="uint64_t" name="time_usec" units="us">Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number.</field>
       <field type="float" name="thrust">Thrust that is fedthrough to the mixer</field>
