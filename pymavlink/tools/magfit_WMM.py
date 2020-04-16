@@ -19,9 +19,10 @@ parser.add_argument("--max-diag", type=float, default=1.2, help="max diagonal")
 parser.add_argument("--min-offdiag", type=float, default=-0.2, help="min off diagonal")
 parser.add_argument("--max-offdiag", type=float, default=0.2, help="max off diagonal")
 parser.add_argument("--max-cmot", type=float, default=10.0, help="max compassmot")
+parser.add_argument("--no-offset-change", action='store_true', help="don't change offsets")
+parser.add_argument("--no-cmot-change", action='store_true', help="don't change cmot")
 parser.add_argument("--elliptical", action='store_true', help="fit elliptical corrections")
 parser.add_argument("--cmot", action='store_true', help="fit compassmot corrections")
-parser.add_argument("--plot", action='store_true', help="plot result")
 parser.add_argument("log", metavar="LOG")
 
 args = parser.parse_args()
@@ -167,6 +168,10 @@ def fit_WWW():
 
     ofs = args.max_offset
     bounds = [(-ofs,ofs),(-ofs,ofs),(-ofs,ofs),(args.min_scale,args.max_scale)]
+    if args.no_offset_change:
+        bounds[0] = (c.offsets.x, c.offsets.x)
+        bounds[1] = (c.offsets.y, c.offsets.y)
+        bounds[2] = (c.offsets.z, c.offsets.z)
 
     if args.elliptical:
         for i in range(3):
@@ -175,8 +180,13 @@ def fit_WWW():
             bounds.append((args.min_offdiag,args.max_offdiag))
 
     if args.cmot:
-        for i in range(3):
-            bounds.append((-args.max_cmot,args.max_cmot))
+        if args.no_cmot_change:
+            bounds.append((c.cmot.x, c.cmot.x))
+            bounds.append((c.cmot.y, c.cmot.y))
+            bounds.append((c.cmot.z, c.cmot.z))
+        else:
+            for i in range(3):
+                bounds.append((-args.max_cmot,args.max_cmot))
 
     p = optimize.fmin_slsqp(wmm_error, p, bounds=bounds)
     p = list(p)
@@ -279,7 +289,7 @@ def magfit(logfile):
                                        parameters.get('COMPASS_MOT%s_Y' % mag_idx,0.0),
                                        parameters.get('COMPASS_MOT%s_Z' % mag_idx,0.0))
     old_corrections.scaling = parameters.get('COMPASS_SCALE%s' % mag_idx, None)
-    if old_corrections.scaling is None:
+    if old_corrections.scaling is None or old_corrections.scaling < 0.1:
         force_scale = False
         old_corrections.scaling = 1.0
     else:
@@ -302,15 +312,18 @@ def magfit(logfile):
     # normalise diagonals to scale factor
     if force_scale:
         avgdiag = (c.diag.x + c.diag.y + c.diag.z)/3.0
+        calc_scale = c.scaling
         c.scaling *= avgdiag
-        c.diag *= 1.0/avgdiag
-        c.offdiag *= 1.0/avgdiag
+        if c.scaling > args.max_scale:
+            c.scaling = args.max_scale
+        if c.scaling < args.min_scale:
+            c.scaling = args.min_scale
+        scale_change = c.scaling / calc_scale
+        c.diag *= 1.0/scale_change
+        c.offdiag *= 1.0/scale_change
 
     print("New: %s diag: %s offdiag: %s cmot: %s scale: %.2f" % (
         c.offsets, c.diag, c.offdiag, c.cmot, c.scaling))
-
-    if not args.plot:
-        return
 
     x = []
 
